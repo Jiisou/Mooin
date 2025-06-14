@@ -3,6 +3,8 @@ import torch
 import numpy as np
 import psutil
 import time
+import csv
+import pandas as pd
 from collections import deque
 from PIL import Image
 import matplotlib.pyplot as plt
@@ -43,6 +45,7 @@ def get_frame_embedding(frame):
 
 # 모니터링 관련 변수
 similarities = []
+log_data = []  # CSV로 저장할 데이터
 frame_interval_sec = 0.5
 last_time = time.time()
 frame_count = 0
@@ -81,20 +84,45 @@ def update_plot(frame_idx):
 
     ram_usage = get_ram_usage()
 
+    # 로그 저장용 데이터
+    log_data.append({
+        "timestamp": current_time,
+        "similarity": similarity,
+        "fps": fps,
+        "latency_ms": infer_latency,
+        "ram_percent": ram_usage,
+    })
+
     # 모니터링 정보 표시
     monitor_text = f"Sim: {similarity:.3f} | FPS: {fps:.2f} | Lat: {infer_latency:.1f}ms | RAM: {ram_usage:.1f}%"
     cv2.putText(frame, monitor_text, (10, 30),
                 cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 0), 2)
 
-    cv2.imshow("Webcam + Similarity", frame)
+    cv2.imshow("Webcam Inference", frame)
 
-    # matplotlib plot 업데이트
     ax.clear()
     ax.plot(similarities, color="crimson")
     ax.set_title("Similarity Over Time")
     ax.set_xlabel("Frame Index")
     ax.set_ylabel("Cosine Similarity")
     ax.set_ylim(0, 1)
+
+def save_log_to_csv(filename="monitoring_log.csv"):
+    fieldnames = ["timestamp", "similarity", "fps", "latency_ms", "ram_percent"]
+    with open(filename, "w", newline="") as csvfile:
+        writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+        writer.writeheader()
+        writer.writerows(log_data)
+    print(f"\n📁 로그 저장 완료: {filename}")
+
+def summarize_csv(filename="monitoring_log.csv"):
+    df = pd.read_csv(filename)
+    print("\n📊 [모니터링 요약 통계]")
+    for column in ["fps", "latency_ms", "ram_percent"]:
+        print(f"\n▶ {column}:")
+        print(f"  평균: {df[column].mean():.2f}")
+        print(f"  최소: {df[column].min():.2f}")
+        print(f"  최대: {df[column].max():.2f}")
 
 if __name__ == "__main__":
     query = "A person is facing forward with their hand open and fingers fully extended"
@@ -108,8 +136,13 @@ if __name__ == "__main__":
     plt.style.use('ggplot')
     fig, ax = plt.subplots(figsize=(8, 4))
 
-    ani = FuncAnimation(fig, update_plot, interval=50)  # matplotlib 호출 빈도 (ms), 실제 프레임 샘플링은 따로 제어
+    ani = FuncAnimation(fig, update_plot, interval=50)
     plt.show()
 
     cap.release()
     cv2.destroyAllWindows()
+
+    # CSV 저장 및 통계 출력
+    csv_filename = "monitoring_log.csv"
+    save_log_to_csv(csv_filename)
+    summarize_csv(csv_filename)
