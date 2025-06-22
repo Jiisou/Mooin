@@ -47,7 +47,7 @@ def get_frame_embedding(frame):
 similarities = []
 
 # 실시간 추론 그래프 업데이트 함수
-def update_inference_plot(): 
+def update_inference_plot(_): 
     global similarities, cap, text_embedding
 
     ret, frame = cap.read()
@@ -56,12 +56,15 @@ def update_inference_plot():
 
     frame_embedding = get_frame_embedding(frame)
     similarity = torch.dot(frame_embedding, text_embedding).item()
+    def normalize_similarity(sim, center=0.20, sharpness=40): # 표본 기반 정규화...
+        return 1 / (1 + np.exp(-sharpness * (sim - center)))
+    similarity = normalize_similarity(similarity)
     similarities.append(similarity)
 
     # 화면에 유사도 수치 표시
     cv2.putText(frame, f"Similarity: {similarity:.3f}", (10, 30),
                 cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
-    cv2.imshow("Webcam + Similarity", frame)
+    cv2.imshow("Webcam Inference", frame)
 
     ax.clear()
     ax.plot(similarities, color="crimson")
@@ -80,7 +83,7 @@ if __name__ == "__main__":
         print("웹캠 열기 실패")
         exit()
 
-    # 추론 그래프 설정
+    # 추론 시각화 설정
     plt.style.use('ggplot')
     fig, ax = plt.subplots(figsize=(8, 4))
 
