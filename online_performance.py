@@ -11,6 +11,8 @@ import matplotlib.pyplot as plt
 from matplotlib.animation import FuncAnimation
 from torchvision.transforms import Compose, Resize, CenterCrop, ToTensor, Normalize, InterpolationMode
 from transformers import CLIPTextModelWithProjection, CLIPTokenizer, CLIPVisionModelWithProjection
+import argparse
+import os
 
 # 모델 및 장치 설정
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -125,10 +127,27 @@ def summarize_csv(filename="monitoring_log.csv"):
         print(f"  최대: {df[column].max():.2f}")
 
 if __name__ == "__main__":
-    query = "A person is facing forward with their hand open and fingers fully extended"
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--local", type=str, help="Local video file path")
+    args = parser.parse_args()
+
+    # query = "A person is facing forward with their hand open and fingers fully extended"
+    query = "A person is laing down"
     text_embedding = get_text_embedding(query)
 
-    cap = cv2.VideoCapture(0)
+    if args.local:
+        video_path = args.local
+        if not os.path.exists(video_path):
+            print(f"❌ 파일을 찾을 수 없음: {video_path}")
+            exit()
+        cap = cv2.VideoCapture(video_path)
+        # out_path = os.path.join("./store", os.path.basename(video_path))
+        # os.makedirs("./store", exist_ok=True)
+        # fourcc = cv2.VideoWriter_fourcc(*"mp4v")
+        # out = cv2.VideoWriter(out_path, fourcc, 20.0, (int(cap.get(3)), int(cap.get(4))))
+    else:
+        cap = cv2.VideoCapture(0)
+    # cap = cv2.VideoCapture(0)
     if not cap.isOpened():
         print("웹캠 열기 실패")
         exit()
